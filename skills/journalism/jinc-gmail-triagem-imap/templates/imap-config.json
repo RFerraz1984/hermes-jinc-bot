@@ -1,0 +1,7 @@
+{
+  "host": "imap.gmail.com",
+  "port": 993,
+  "username": "SEU_EMAIL@gmail.com",
+  "password": "SENHA_OU_APP_PASSWORD",
+  "search_folder": "INBOX"
+}

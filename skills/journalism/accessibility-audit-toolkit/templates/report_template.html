@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Acessibilidade - {{ data.url }}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 20px; color: #333; }
+        h1, h2, h3 { color: #1a1a1a; }
+        table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f5f5f5; font-weight: 600; }
+        .pass { color: #28a745; } .fail { color: #dc3545; } .warn { color: #ffc107; }
+        .badge { padding: 2px 8px; border-radius: 4px; font-size: 0.85em; }
+        .badge-critical { background: #f8d7da; color: #721c24; }
+        .badge-serious { background: #fff3cd; color: #856404; }
+        .badge-moderate { background: #d1ecf1; color: #0c5460; }
+        .badge-minor { background: #d4edda; color: #155724; }
+        .summary-box { background: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 20px 0; }
+        .violation { background: #fff; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin: 10px 0; }
+        .violation-header { font-weight: bold; margin-bottom: 8px; }
+        code { background: #f1f1f1; padding: 2px 6px; border-radius: 3px; }
+        .toc { background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+        .toc ul { margin: 0; padding-left: 20px; }
+        .toc a { color: #007bff; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 0.9em; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>📋 Relatório de Auditoria de Acessibilidade</h1>
+    <p><strong>URL:</strong> {{ data.url }} | <strong>Data:</strong> {{ today }} | <strong>Audit ID:</strong> {{ data.audit_id }}</p>
+
+    <nav class="toc">
+        <h2>📑 Sumário</h2>
+        <ul>
+            <li><a href="#resumo-executivo">🎯 Resumo Executivo</a></li>
+            <li><a href="#riscos-juridicos">🚨 Riscos Jurídicos</a></li>
+            <li><a href="#top-violacoes">📊 Top Violações</a></li>
+            <li><a href="#checklist-emag">✅ Checklist e-MAG 3.1</a></li>
+            <li><a href="#plano-acao">📋 Plano de Ação</a></li>
+            <li><a href="#anexos">📎 Anexos</a></li>
+        </ul>
+    </nav>
+
+    <section id="resumo-executivo">
+        <div class="summary-box">
+            <h2>🎯 Resumo Executivo</h2>
+            <table>
+                <tr><th>Métrica</th><th>Valor</th><th>Status</th></tr>
+                <tr><td>Páginas auditadas</td><td>{{ summary.urls_tested }}</td><td>✅</td></tr>
+                <tr><td>Violações totais</td><td>{{ summary.total_violations }}</td><td>{% if summary.total_violations > 0 %}🔴{% else %}✅{% endif %}</td></tr>
+                <tr><td>Nível A</td><td>{{ summary.by_level.A }}</td><td>{% if summary.by_level.A > 0 %}🔴{% else %}✅{% endif %}</td></tr>
+                <tr><td>Nível AA</td><td>{{ summary.by_level.AA }}</td><td>{% if summary.by_level.AA > 0 %}🔴{% else %}✅{% endif %}</td></tr>
+                <tr><td>Conformidade WCAG 2.2 AA</td><td>{{ compliance_pct }}%</td><td>{% if compliance_pct < 50 %}🔴{% elif compliance_pct < 90 %}🟡{% else %}✅{% endif %}</td></tr>
+                <tr><td>Cobertura e-MAG 3.1</td><td>{{ "%.0f"|format(summary.emag_coverage * 100) }}%</td><td>{% if summary.emag_coverage < 0.7 %}🔴{% elif summary.emag_coverage < 0.9 %}🟡{% else %}✅{% endif %}</td></tr>
+            </table>
+        </div>
+    </section>
+
+    <section id="riscos-juridicos">
+        <h2>🚨 Principais Riscos Jurídicos</h2>
+        {% for risk in risks %}
+        <div class="violation">
+            <div class="violation-header">{{ loop.index }}. <strong>{{ risk.law }}</strong></div>
+            <p>{{ risk.description }}</p>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section id="top-violacoes">
+        <h2>📊 Top Violações por Impacto</h2>
+        <table>
+            <tr><th>Critério</th><th>WCAG</th><th>Nível</th><th>Páginas</th><th>Impacto</th><th>Ajuste Necessário</th></tr>
+            {% for v in top_violations %}
+            <tr>
+                <td>{{ v.name }}</td>
+                <td>{{ v.wcag }}</td>
+                <td>{{ v.level }}</td>
+                <td>{{ v.pages }}</td>
+                <td><span class="badge badge-{{ v.impact.lower() }}">{{ v.impact }}</span></td>
+                <td>{{ v.fix }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </section>
+
+    <section id="checklist-emag">
+        <h2>✅ Checklist e-MAG 3.1</h2>
+        {% if data.manual_results and data.manual_results.emag and 'error' not in data.manual_results.emag %}
+        <table>
+            <tr><th>Métrica</th><th>Valor</th></tr>
+            <tr><td>Itens totais</td><td>{{ data.manual_results.emag.total_items }}</td></tr>
+            <tr><td>Passaram</td><td>{{ data.manual_results.emag.passed }}</td></tr>
+            <tr><td>Falharam</td><td>{{ data.manual_results.emag.failed }}</td></tr>
+            <tr><td>Manuais</td><td>{{ data.manual_results.emag.manual }}</td></tr>
+        </table>
+        {% else %}
+        <p>Checklist e-MAG não executado ou com erro.</p>
+        {% endif %}
+    </section>
+
+    <section id="plano-acao">
+        <h2>📋 Plano de Ação Prioritário</h2>
+        <table>
+            <tr><th>Prioridade</th><th>Ação</th><th>Responsável</th><th>Prazo</th><th>Critério</th></tr>
+            {% for action in actions %}
+            <tr>
+                <td>{{ action.priority }}</td>
+                <td>{{ action.action }}</td>
+                <td>{{ action.owner }}</td>
+                <td>{{ action.deadline }}</td>
+                <td>{{ action.criterion }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </section>
+
+    <section id="anexos">
+        <h2>📎 Anexos</h2>
+        <ul>
+            <li><code>{{ data.audit_id }}_technical.json</code> — Dados completos para desenvolvedores</li>
+            <li><code>{{ data.audit_id }}_technical.md</code> — Relatório técnico detalhado</li>
+            <li><code>{{ data.audit_id }}_emag_checklist.md</code> — Checklist detalhado</li>
+            <li><code>{{ data.audit_id }}_report.html</code> — Este relatório HTML navegável</li>
+            <li><code>screenshots/</code> — Evidências visuais (antes/depois)</li>
+        </ul>
+    </section>
+
+    <footer>
+        <p>Gerado por <strong>Accessibility Audit Toolkit</strong> — Jornalista Inclusivo (JINC Apps)</p>
+        <p>Normas: WCAG 2.2 AA + e-MAG 3.1 | Ferramentas: axe 4.8, pa11y 6.2, Lighthouse 11.5</p>
+    </footer>
+</body>
+</html>

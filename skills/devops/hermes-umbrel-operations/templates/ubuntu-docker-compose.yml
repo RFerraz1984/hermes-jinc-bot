@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes
+    restart: unless-stopped
+    volumes:
+      - ./data:/opt/data
+    environment:
+      - HERMES_DASHBOARD=1
+      - HERMES_DASHBOARD_HOST=0.0.0.0
+      - HERMES_DASHBOARD_PORT=9119
+      - TZ=America/Sao_Paulo
+      - HERMES_TUI_DIR=/opt/hermes/ui-tui
+      - HERMES_NODE=/usr/bin/node
+      - HERMES_LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "9119:9119"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9119/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    name: hermes-network

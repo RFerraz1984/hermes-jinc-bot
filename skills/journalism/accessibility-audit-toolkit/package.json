@@ -1,0 +1,44 @@
+{
+  "name": "accessibility-audit-toolkit",
+  "version": "0.2.0",
+  "description": "WCAG 2.2 AA + e-MAG 3.1 accessibility audit toolkit for journalists",
+  "main": "scripts/audit.py",
+  "scripts": {
+    "install:tools": "npm install -g @axe-core/cli@4.8 pa11y@6.2 @lhci/cli@0.13",
+    "install:tools:ci": "npm ci --prefix .",
+    "audit": "python -m scripts.audit",
+    "audit:help": "python -m scripts.audit --help",
+    "test": "pytest tests/ -v",
+    "test:cov": "pytest tests/ --cov=scripts --cov-report=term-missing",
+    "lint": "ruff check scripts/ tests/",
+    "format": "ruff format scripts/ tests/"
+  },
+  "keywords": [
+    "accessibility",
+    "wcag",
+    "emag",
+    "axe",
+    "pa11y",
+    "lighthouse",
+    "journalism",
+    "inclusion"
+  ],
+  "author": "Jornalista Inclusivo (JINC Apps)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jornalistainclusivo/accessibility-audit-toolkit"
+  },
+  "dependencies": {
+    "@axe-core/cli": "^4.8.0",
+    "pa11y": "^6.2.0",
+    "@lhci/cli": "^0.13.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "volta": {
+    "node": "20.11.0"
+  }
+}

@@ -1,0 +1,160 @@
+# Manual PKCE Code Exchange for Spotify on Umbrel
+
+**Use when:** No SSH access, cannot expose ports, container has no display/browser.
+
+## Prerequisites
+- Spotify Developer App created (Client ID)
+- Python with `requests` in Hermes venv (`/opt/hermes/.venv/bin/python3 -m pip install requests`)
+
+## Complete Working Script
+
+Save as `/opt/data/spotify_pkce.py`:
+
+```python
+#!/usr/bin/env python3
+"""
+Manual PKCE token exchange for Spotify on containerized Hermes (Umbrel/Docker/K8s).
+Generates own code_verifier, builds auth URL, exchanges code via Spotify API,
+saves tokens to Hermes auth.json using internal API.
+"""
+import base64, hashlib, json, os, secrets, sys, urllib.parse, requests
+
+# ==== CONFIGURE THESE ====
+CLIENT_ID = "YOUR_SPOTIFY_CLIENT_ID"
+REDIRECT_URI = "http://127.0.0.1:43827/spotify/callback"
+SCOPES = ("user-modify-playback-state user-read-playback-state user-read-currently-playing "
+          "user-read-recently-played playlist-read-private playlist-read-collaborative "
+          "playlist-modify-public playlist-modify-private user-library-read user-library-modify")
+# ==========================
+
+AUTH_URL = "https://accounts.spotify.com/authorize"
+TOKEN_URL = "https://accounts.spotify.com/api/token"
+AUTH_FILE = "/opt/data/auth.json"
+
+def gen_verifier(): return secrets.token_urlsafe(64)[:128]
+
+def gen_challenge(verifier):
+    return base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+
+def build_auth_url(verifier):
+    params = {
+        "client_id": CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": REDIRECT_URI,
+        "scope": SCOPES,
+        "code_challenge_method": "S256",
+        "code_challenge": gen_challenge(verifier),
+        "state": secrets.token_urlsafe(16)
+    }
+    return f"{AUTH_URL}?{urllib.parse.urlencode(params)}"
+
+def exchange_code(code, verifier):
+    data = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": REDIRECT_URI,
+        "client_id": CLIENT_ID,
+        "code_verifier": verifier
+    }
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    resp = requests.post(TOKEN_URL, data=data, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+def save_to_auth_json(tokens):
+    sys.path.insert(0, "/opt/hermes")
+    from hermes_cli.auth import _store_provider_state, _load_auth_store, _save_auth_store
+    
+    state = {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "token_type": tokens.get("token_type", "Bearer"),
+        "expires_at": "2099-12-31T23:59:59+00:00",  # far future; refresh handles real expiry
+        "scope": tokens.get("scope", ""),
+        "granted_scope": tokens.get("scope", ""),
+        "client_id": CLIENT_ID,
+        "redirect_uri": REDIRECT_URI,
+        "api_base_url": "https://api.spotify.com/v1",
+        "accounts_base_url": "https://accounts.spotify.com",
+        "auth_type": "oauth_pkce",
+    }
+    store = _load_auth_store()
+    _store_provider_state(store, "spotify", state, set_active=False)
+    _save_auth_store(store)
+    print("✅ Tokens saved to /opt/data/auth.json")
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        verifier = gen_verifier()
+        auth_url = build_auth_url(verifier)
+        print("=" * 60)
+        print("AUTH URL — OPEN IN HOST BROWSER:")
+        print("=" * 60)
+        print(auth_url)
+        print()
+        print("=" * 60)
+        print("CODE VERIFIERIFIER — SAVE THIS:")
+        print("=" * 60)
+        print(verifier)
+        print()
+        print("Steps:")
+        print("  1. Open the auth URL above in your host browser")
+        print("  2. Log in to Spotify, click 'Agree'")
+        print("  3. Browser redirects to error page (normal)")
+        print("  4. Copy the 'code' parameter from the redirect URL")
+        print("  5. Run: python3 spotify_pkce.py <code> <code_verifier>")
+        sys.exit(0)
+
+    code = sys.argv[1]
+    verifier = sys.argv[2] if len(sys.argv) > 2 else None
+    if not verifier:
+        print("ERROR: Need code_verifier. Run without args to generate new pair.")
+        sys.exit(1)
+
+    print("Exchanging code for tokens...")
+    tokens = exchange_code(code, verifier)
+    save_to_auth_json(tokens)
+    print(json.dumps(tokens, indent=2))
+```
+
+## Usage
+
+```bash
+# 1. Edit script with your CLIENT_ID
+# 2. Install requests if needed
+/opt/hermes/.venv/bin/python3 -m pip install requests -q
+
+# 3. Generate auth URL + code_verifier
+/opt/hermes/.venv/bin/python3 /opt/data/spotify_pkce.py
+
+# 4. Open the printed URL in HOST browser → Authorize → Copy 'code' from redirect URL
+
+# 5. Exchange code for tokens
+/opt/hermes/.venv/bin/python3 /opt/data/spotify_pkce.py <CODE> <CODE_VERIFIER>
+
+# 6. Verify
+/opt/hermes/.venv/bin/hermes auth status spotify
+```
+
+## Why This Works
+
+| Component | How |
+|-----------|-----|
+| **code_verifier** | Generated by script, known for exchange |
+| **code_challenge** | Derived from verifier (S256), sent in auth URL |
+| **Token exchange** | Direct POST to `https://accounts.spotify.com/api/token` with `code_verifier` |
+| **Token storage** | Uses Hermes internal `_store_provider_state` → writes to protected `auth.json` |
+| **No callback server** | Never needed — we extract `code` manually from browser URL |
+
+## Troubleshooting
+
+| Error | Fix |
+|-------|-----|
+| `ModuleNotFoundError: requests` | Run pip install in Hermes venv |
+| `400 Bad Request: invalid_grant` | Code already used (single-use). Generate new auth URL. |
+| `400 Bad Request: code_verifier mismatch` | Ensure exact same verifier used for auth URL and exchange |
+| `AuthError` saving tokens | Ensure Hermes venv Python can import `hermes_cli.auth` |
+
+## Tested On
+- Umbrel (Hermes Agent app) — containerized, no SSH tunnel needed
+- Spotify PKCE flow — all scopes including playback control (Premium required)

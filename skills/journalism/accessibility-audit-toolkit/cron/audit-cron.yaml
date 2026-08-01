@@ -1,0 +1,99 @@
+# Cron jobs para Accessibility Audit Toolkit
+# 
+# Para instalar no Hermes (Umbrel):
+#   hermes cron create --from-file cron/audit-cron.yaml
+#
+# Ou via skill cronjob:
+#   cronjob(action='create', schedule='0 3 * * *', prompt='...', skills=['accessibility-audit-toolkit'])
+
+jobs:
+  - name: "audit-daily-jinc"
+    schedule: "0 3 * * *"  # Diário às 03:00
+    prompt: |
+      Execute auditoria de acessibilidade completa nos sites do Jornalista Inclusivo.
+      
+      Sites a auditar:
+      1. https://jornalistainclusivo.com
+      2. https://jornalistainclusivo.com.br
+      3. https://pcd.dataverso.org
+      4. https://dados.dataverso.org/pcd
+      5. https://pcd.chat
+      
+      Para cada site:
+      1. Rode crawl para descobrir até 20 URLs (depth 3)
+      2. Execute axe + pa11y + lighthouse em todas URLs
+      3. Teste contraste (AA) na home + 4 páginas amostra
+      4. Teste navegação por teclado na home
+      5. Rode checklist e-MAG 3.1 na home
+      6. Gere relatórios: HTML executivo + JSON técnico + Markdown técnico + checklist e-MAG
+      7. Compare com auditoria anterior (diff_report)
+      8. Se houver regressão (novas violações críticas/serious), alerte no Telegram
+      9. Salve tudo em /opt/data/audits/jinc/{site}/{date}/
+      
+      Entregue resumo executivo em PT-BR no Telegram (chat 965862678).
+    skills:
+      - "accessibility-audit-toolkit"
+    deliver: "telegram:965862678"
+    enabled_toolsets: ["web", "terminal", "file"]
+
+  - name: "audit-weekly-full"
+    schedule: "0 2 * * 1"  # Segunda 02:00
+    prompt: |
+      Auditoria semanal completa (deep crawl) - 50 URLs por site, depth 5.
+      
+      Sites: jornalistainclusivo.com, pcd.dataverso.org, pcd.chat
+      
+      Mesmos passos da diária mas com:
+      - max_urls: 50
+      - depth: 5
+      - contraste AAA em todas páginas
+      - keyboard nav em 5 páginas
+      - screen reader test (speech-dispatcher) na home
+      - diff detalhado vs semana anterior
+      
+      Entregue relatório comparativo semanal no Telegram.
+    skills:
+      - "accessibility-audit-toolkit"
+    deliver: "telegram:965862678"
+    enabled_toolsets: ["web", "terminal", "file"]
+
+  - name: "audit-on-deploy"
+    schedule: "on_webhook"  # Trigger via webhook do GitHub Actions/Deploy
+    prompt: |
+      Auditoria pós-deploy triggerada por webhook.
+      
+      Recebe URL via contexto do webhook (context_from job anterior ou payload).
+      Executa auditoria rápida (axe + pa11y + lighthouse + contraste AA + keyboard)
+      nas 5 páginas principais do site deployado.
+      
+      Se regressão crítica → alerta urgente no Telegram.
+      Se OK → confirmação silenciosa (log only).
+    skills:
+      - "accessibility-audit-toolkit"
+    deliver: "telegram:965862678"
+    enabled_toolsets: ["web", "terminal", "file"]
+    context_from: []  # Será preenchido pelo webhook handler
+
+  - name: "audit-legislative-portals"
+    schedule: "0 6 * * 1,3,5"  # Seg/Qua/Sex 06:00
+    prompt: |
+      Auditoria de portais legislativos federais (monitoramento contínuo).
+      
+      Portais:
+      - https://www.camara.leg.br
+      - https://www.senado.leg.br
+      - https://www.planalto.gov.br
+      - https://www.gov.br/acessibilidade
+      
+      Executa: axe + pa11y (WCAG2AA) + checklist e-MAG itens obrigatórios
+      Gera relatório técnico + alerta se violação crítica em:
+      - Conteúdo principal (leis, votações, decretos)
+      - Formulários de participação social
+      - Transmissões ao vivo (legendas, audiodescrição)
+      
+      Entrega no Telegram + salva em /opt/data/audits/legislativo/
+    skills:
+      - "accessibility-audit-toolkit"
+      - "legislative-tracker-br"
+    deliver: "telegram:965862678"
+    enabled_toolsets: ["web", "terminal", "file"]

@@ -1,0 +1,356 @@
+# Web Scraping Pipeline - Configuração de Fontes
+# Cada fonte define: URL, tipo, seletores, frequência, palavras-chave
+
+sources:
+  # Diário Oficial da União - Seção 1 (leis, decretos, portarias federais)
+  - id: dou_secao1
+    name: "Diário Oficial da União - Seção 1"
+    url: "https://www.in.gov.br/leiturajornal?data={date}&secao1"
+    type: "html"
+    schedule: "0 6 * * 1-5"  # 6h dias úteis
+    base_url: "https://www.in.gov.br"
+    selectors:
+      list: "article.article-item"
+      title: "h3 a::text"
+      link: "h3 a@href"
+      date: "time@datetime"
+      content: "div.article-content::text"
+    tags: ["oficial", "legislacao", "federal"]
+    keywords:
+      - "pessoa com deficiência"
+      - "PcD"
+      - "acessibilidade"
+      - "inclusão"
+      - "cota"
+      - "LBI"
+      - "Lei Brasileira de Inclusão"
+    enabled: true
+
+  # Diário Oficial da União - Seção 3 (editais, licitações, concursos)
+  - id: dou_secao3
+    name: "Diário Oficial da União - Seção 3"
+    url: "https://www.in.gov.br/leiturajornal?data={date}&secao3"
+    type: "html"
+    schedule: "0 7 * * 1-5"
+    base_url: "https://www.in.gov.br"
+    selectors:
+      list: "article.article-item"
+      title: "h3 a::text"
+      link: "h3 a@href"
+      date: "time@datetime"
+      content: "div.article-content::text"
+    tags: ["oficial", "concursos", "editais", "federal"]
+    keywords:
+      - "pessoa com deficiência"
+      - "PcD"
+      - "cota"
+      - "concurso"
+      - "acessibilidade"
+    enabled: true
+
+  # Câmara dos Deputados - Proposições (API JSON)
+  - id: camara_proposicoes
+    name: "Câmara dos Deputados - Proposições"
+    url: "https://dadosabertos.camara.leg.br/api/v2/proposicoes?dataInicio={date}&itens=100&ordenarPor=id&ordem=DESC"
+    type: "json_api"
+    schedule: "0 */4 * * *"
+    json_path: "$.dados[*]"
+    fields:
+      id: "id"
+      title: "ementa"
+      link: "uriProposicao"
+      date: "dataApresentacao"
+      autor: "autor.nome"
+      partido: "autor.partido"
+      uf: "autor.uf"
+      tipo: "siglaTipo"
+      numero: "numero"
+      ano: "ano"
+      situacao: "statusProposicao.descricaoSituacao"
+      temas: "temas[*].tema"
+      url_inteiro_teor: "uriInteiroTeor"
+    tags: ["legislativo", "proposicao", "federal"]
+    keywords:
+      - "deficiência"
+      - "acessibilidade"
+      - "inclusão"
+      - "cota"
+      - "LBI"
+      - "PcD"
+      - "Lei Brasileira de Inclusão"
+      - "Decreto 10.098"
+      - "CONADE"
+    enabled: true
+
+  # Senado Federal - Proposições (API XML)
+  - id: senado_proposicoes
+    name: "Senado Federal - Proposições"
+    url: "https://legis.senado.leg.br/dadosabertos/materia/pesquisa/lista?dataInicial={date}&itens=100"
+    type: "xml_api"
+    schedule: "0 */4 * * *"
+    xpath_list: "//Materia"
+    xpath:
+      id: "IdentificacaoMateria/CodigoMateria"
+      title: "IdentificacaoMateria/EmentaMateria"
+      link: "IdentificacaoMateria/LinkInteiroTeor"
+      date: "IdentificacaoMateria/DataApresentacao"
+      autor: "IdentificacaoMateria/Autores/Autor/NomeAutor"
+      partido: "IdentificacaoMateria/Autores/Autor/SiglaPartido"
+      uf: "IdentificacaoMateria/Autores/Autor/UFAutor"
+    tags: ["legislativo", "proposicao", "federal"]
+    keywords:
+      - "deficiência"
+      - "acessibilidade"
+      - "inclusão"
+      - "cota"
+      - "LBI"
+      - "PcD"
+    enabled: true
+
+  # Ministério dos Direitos Humanos - Notícias
+  - id: mdh_noticias
+    name: "Ministério dos Direitos Humanos - Notícias"
+    url: "https://www.gov.br/mdh/pt-br/noticias"
+    type: "html"
+    schedule: "0 8 * * *"
+    base_url: "https://www.gov.br"
+    selectors:
+      list: "article.tileItem"
+      title: "h2 a::text"
+      link: "h2 a@href"
+      date: "span.documentPublished@content"
+      content: "div.tileBody::text"
+    tags: ["executivo", "politicas", "direitos-humanos"]
+    keywords:
+      - "pessoa com deficiência"
+      - "PcD"
+      - "acessibilidade"
+      - "inclusão"
+      - "conade"
+      - "conselho"
+    enabled: true
+
+  # CONADE - Resoluções e Deliberações
+  - id: conade_resolucoes
+    name: "CONADE - Resoluções e Deliberações"
+    url: "https://www.gov.br/mdh/pt-br/assuntos/pessoa-com-deficiencia/conade/resolucoes"
+    type: "html"
+    schedule: "0 12 * * 1"
+    base_url: "https://www.gov.br"
+    selectors:
+      list: "article"
+      title: "h2 a::text"
+      link: "h2 a@href"
+      date: "span.documentPublished@content"
+    tags: ["conade", "resolucao", "normativo"]
+    keywords: []
+    enabled: true
+
+  - id: conade_deliberacoes
+    name: "CONADE - Deliberações"
+    url: "https://www.gov.br/mdh/pt-br/assuntos/pessoa-com-deficiencia/conade/deliberacoes"
+    type: "html"
+    schedule: "0 12 * * 1"
+    base_url: "https://www.gov.br"
+    selectors:
+      list: "article"
+      title: "h2 a::text"
+      link: "h2 a@href"
+      date: "span.documentPublished@content"
+    tags: ["conade", "deliberacao", "normativo"]
+    keywords: []
+    enabled: true
+
+  # TSE - Acessibilidade Eleitoral
+  - id: tse_acessibilidade
+    name: "TSE - Acessibilidade Eleitoral"
+    url: "https://www.tse.jus.br/eleicoes/acessibilidade"
+    type: "html"
+    schedule: "0 10 * * 1"
+    base_url: "https://www.tse.jus.br"
+    selectors:
+      list: "div.item-noticia"
+      title: "h3 a::text"
+      link: "h3 a@href"
+      date: "span.data::text"
+    tags: ["eleitoral", "acessibilidade", "voto"]
+    keywords:
+      - "acessibilidade"
+      - "urna"
+      - "voto"
+      - "seção"
+      - "mesário"
+      - "deficiência"
+    enabled: true
+
+  - id: tse_noticias
+    name: "TSE - Notícias"
+    url: "https://www.tse.jus.br/imprensa/noticias-tse"
+    type: "html"
+    schedule: "0 10 * * *"
+    base_url: "https://www.tse.jus.br"
+    selectors:
+      list: "article"
+      title: "h2 a::text"
+      link: "h2 a@href"
+      date: "time@datetime"
+      content: "div.conteudo::text"
+    tags: ["eleitoral", "tse", "noticias"]
+    keywords:
+      - "acessibilidade"
+      - "PcD"
+      - "deficiência"
+      - "urna"
+      - "seção"
+      - "voto"
+      - "mesário"
+    enabled: true
+
+  # Planalto - Decretos e Leis
+  - id: planalto_decretos
+    name: "Planalto - Decretos e Leis"
+    url: "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/{date}/index.htm"
+    type: "html"
+    schedule: "0 7 * * 1-5"
+    base_url: "https://www.planalto.gov.br"
+    selectors:
+      list: "ul.lista-documentos li"
+      title: "a::text"
+      link: "a@href"
+      date: "span.data::text"
+    tags: ["executivo", "decreto", "lei", "federal"]
+    keywords:
+      - "pessoa com deficiência"
+      - "PcD"
+      - "acessibilidade"
+      - "inclusão"
+      - "cota"
+      - "LBI"
+      - "Lei 13.146"
+      - "Decreto 10.098"
+    enabled: true
+
+  # GOV.BR - Serviços PcD
+  - id: govbr_servicos
+    name: "GOV.BR - Serviços PcD"
+    url: "https://www.gov.br/pt-br/servicos"
+    type: "html_js"
+    schedule: "0 9 * * 1"
+    base_url: "https://www.gov.br"
+    selectors:
+      list: "article.servico-item"
+      title: "h3 a::text"
+      link: "h3 a@href"
+      date: "time@datetime"
+      content: "p.descricao::text"
+    wait_for: "article.servico-item"
+    tags: ["servicos", "governo", "acessibilidade"]
+    keywords:
+      - "pessoa com deficiência"
+      - "PcD"
+      - "acessibilidade"
+      - "inclusão"
+      - "cota"
+      - "benefício"
+      - "BPC"
+      - "LOAS"
+    enabled: true
+
+  # IBGE SIDRA - Tabelas PcD
+  - id: ibge_sidra_pcd
+    name: "IBGE SIDRA - Tabelas PcD"
+    url: "https://apisidra.ibge.gov.br/values/t/6579/n1/all/v/9324/p/all/c11255/all"
+    type: "json_api"
+    schedule: "0 9 1 * *"
+    json_path: "$.result[*]"
+    fields:
+      periodo: "D1N"
+      variavel: "V"
+      valor: "Valor"
+      classificacao: "C11255"
+    tags: ["dados", "estatistica", "censo", "pnad", "ibge"]
+    keywords: []
+    enabled: true
+
+  # Portal da Transparência - Convênios PcD
+  - id: transparencia_convenios_pcd
+    name: "Portal da Transparência - Convênios PcD"
+    url: "https://api.portaldatransparencia.gov.br/api-de-dados/convenios?dataInicio={date}&dataFim={date}&palavraChave=pessoa%20com%20deficiência"
+    type: "json_api"
+    schedule: "0 9 * * 1"
+    json_path: "$.convenios[*]"
+    fields:
+      id: "id"
+      title: "objeto"
+      link: "urlDetalhe"
+      date: "dataAssinatura"
+      valor: "valorGlobal"
+      orgao: "orgaoConcedente"
+      convenente: "convenente"
+    headers:
+      Authorization: "Bearer ${TRANSPARENCIA_TOKEN}"
+    tags: ["transparencia", "convenios", "politicas-publicas"]
+    keywords:
+      - "pessoa com deficiência"
+      - "PcD"
+      - "acessibilidade"
+      - "inclusão"
+    enabled: false  # Requer token de API
+
+  # INEP - Censo Escolar AEE
+  - id: inep_censo_escolar_aee
+    name: "INEP - Censo Escolar AEE"
+    url: "https://dadosabertos.inep.gov.br/dataset/censo-escolar/resource/..."
+    type: "json_api"
+    schedule: "0 10 1 3 *"
+    tags: ["educacao", "censo", "inep", "aee"]
+    keywords:
+      - "AEE"
+      - "atendimento educacional especializado"
+      - "acessibilidade"
+    enabled: false  # URL específica necessária
+
+  # Dados.gov.br - Catálogo PcD
+  - id: dados_gov_br_catalogo_pcd
+    name: "Dados.gov.br - Catálogo PcD"
+    url: "https://dados.gov.br/api/3/action/package_search?q=deficiência+OR+acessibilidade+OR+inclusão&rows=50"
+    type: "json_api"
+    schedule: "0 11 * * 1"
+    json_path: "$.result.results[*]"
+    fields:
+      title: "title"
+      link: "url"
+      date: "metadata_created"
+      descricao: "notes"
+      organizacao: "organization.title"
+      recursos: "resources[*].url"
+    tags: ["catalogo", "dados-abertos", "ckan"]
+    keywords: []
+    enabled: false  # Busca genérica, muito ruído
+
+# Configurações globais
+settings:
+  # Diretório de dados
+  data_dir: "/opt/data/web-scraping"
+  
+  # Telegram (configurar via env vars)
+  # TELEGRAM_BOT_TOKEN=
+  # TELEGRAM_CHAT_ID=
+  
+  # API Tokens (configurar via env vars)
+  # TRANSPARENCIA_TOKEN=
+  
+  # Deduplicação
+  dedup_ttl_days: 30
+  
+  # Logs
+  log_level: "INFO"
+  log_dir: "/opt/data/web-scraping/logs"
+  
+  # Digest
+  digest_time: "18:00"
+  digest_format: ["markdown", "json"]
+  
+  # Alertas
+  alert_threshold: 50  # score mínimo para alerta imediato
+  max_alerts_per_run: 20

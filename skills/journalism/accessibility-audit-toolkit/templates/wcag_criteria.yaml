@@ -1,0 +1,142 @@
+criteria:
+  1.1.1:
+    name: "Conteúdo Não-Textual"
+    level: A
+    emag: "Item 1.1"
+    description: "Todo conteúdo não-textual tem alternativa textual equivalente"
+    automated: true
+    test: "axe: image-alt, svg-img-alt"
+
+  1.2.1:
+    name: "Apenas Áudio e Apenas Vídeo (Pré-gravado)"
+    level: A
+    emag: "Item 1.2"
+    automated: false
+    manual_test: "Verificar transcrição/legendas em áudio/vídeo isolados"
+
+  1.3.1:
+    name: "Informação e Relacionamentos"
+    level: A
+    emag: "Item 1.3"
+    automated: true
+    test: "axe: label, table-headers, landmark-one-main, region"
+
+  1.4.3:
+    name: "Contraste (Mínimo)"
+    level: AA
+    emag: "Item 1.4"
+    automated: true
+    test: "axe: color-contrast"
+    threshold: 4.5
+
+  1.4.11:
+    name: "Contraste de Componentes Não-Textuais"
+    level: AA
+    emag: "Item 1.5"
+    automated: true
+    test: "axe: color-contrast"
+    threshold: 3.0
+
+  2.1.1:
+    name: "Teclado"
+    level: A
+    emag: "Item 2.1"
+    automated: false
+    manual_test: "Tab por toda a página — todos os elementos interativos acessíveis e operáveis"
+
+  2.1.2:
+    name: "Sem Armadilha de Teclado"
+    level: A
+    automated: true
+    test: "axe: keyboard-trap"
+
+  2.4.1:
+    name: "Blocos de Ignorar"
+    level: A
+    emag: "Item 2.2"
+    automated: true
+    test: "axe: skip-link, bypass-blocks"
+
+  2.4.3:
+    name: "Ordem de Foco"
+    level: A
+    automated: false
+    manual_test: "Tab order lógico (visual = DOM order)"
+
+  2.4.6:
+    name: "Cabeçalhos e Rótulos"
+    level: AA
+    emag: "Item 2.3"
+    automated: true
+    test: "axe: heading-order, label, aria-required-attr"
+
+  2.4.7:
+    name: "Foco Visível"
+    level: AA
+    emag: "Item 2.4"
+    automated: true
+    test: "axe: focus-visible, focus-order"
+
+  2.5.3:
+    name: "Rótulo no Nome"
+    level: A
+    automated: true
+    test: "axe: label-in-name"
+
+  3.1.1:
+    name: "Idioma da Página"
+    level: A
+    emag: "Item 3.1"
+    automated: true
+    test: "axe: html-has-lang, html-lang-valid"
+
+  3.2.1:
+    name: "No Foco"
+    level: A
+    automated: true
+    test: "axe: onfocus"
+
+  3.3.1:
+    name: "Identificação de Erros"
+    level: A
+    emag: "Item 3.2"
+    automated: true
+    test: "axe: error-message, form-field"
+
+  4.1.1:
+    name: "Processamento"
+    level: A
+    automated: true
+    test: "axe: duplicate-id, duplicate-id-active, duplicate-id-aria"
+
+  4.1.2:
+    name: "Nome, Função, Valor"
+    level: A
+    emag: "Item 4.1"
+    automated: true
+    test: "axe: aria-allowed-attr, aria-required-attr, aria-valid-attr-value"
+
+  # WCAG 2.2 novos
+  2.4.11:
+    name: "Foco Não Encoberto (Mínimo)"
+    level: AA
+    automated: false
+    manual_test: "Elemento focado não totalmente encoberto por conteúdo sticky/overlay"
+
+  2.5.7:
+    name: "Movimentos de Arrastar"
+    level: AA
+    automated: false
+    manual_test: "Funcionalidade de arrastar tem alternativa por ponto único"
+
+  3.2.6:
+    name: "Ajuda Consistente"
+    level: A
+    automated: true
+    test: "axe: consistent-help"
+
+  3.3.7:
+    name: "Entrada Redundante"
+    level: A
+    automated: false
+    manual_test: "Não pedir mesma informação duas vezes no mesmo processo"

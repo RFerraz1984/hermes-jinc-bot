@@ -1,0 +1,36 @@
+# Web Scraping Pipeline - Dependencies
+# Install with: pip install --user -r requirements.txt
+
+# Core HTTP & parsing
+httpx>=0.25.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# Playwright for JS-heavy sites
+playwright>=1.40.0
+
+# JSON/XML processing
+jsonpath-ng>=1.6.0
+
+# Deduplication & storage
+sqlite-utils>=3.37.0
+
+# Async & scheduling
+apscheduler>=3.10.0
+
+# Telegram notifications
+python-telegram-bot>=20.0
+
+# Configuration
+pyyaml>=6.0
+
+# Utilities
+tenacity>=8.2.0
+tqdm>=4.66.0
+
+# Optional: spaCy for NER (install separately)
+# spacy>=3.7.0
+# pt_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.7.0/pt_core_news_sm-3.7.0-py3-none-any.whl
+
+# Optional: date parsing
+python-dateutil>=2.8.0

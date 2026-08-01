@@ -1,0 +1,143 @@
+# Templates de Cron Jobs para Auditoria de Acessibilidade
+
+Estes templates podem ser usados com `hermes cron create` ou salvos como YAML e importados via `hermes cron create --from-file` (se suportado).
+
+## 1. Auditoria Diária — Sites Jornalista Inclusivo
+
+```yaml
+# cron/audit-daily-jinc.yaml
+name: "audit-daily-jinc"
+schedule: "0 3 * * *"  # Diário 03:00 UTC
+prompt: |
+  Execute auditoria de acessibilidade completa (auto-only) nos sites do Jornalista Inclusivo.
+
+  Sites a auditar (urls_jinc.txt):
+  https://jornalistainclusivo.com
+  https://jornalistainclusivo.com.br
+  https://pcd.dataverso.org
+  https://dados.dataverso.org/pcd
+  https://pcd.chat
+
+  Para cada site:
+  1. Crawl depth 3, max 20 URLs
+  2. axe + pa11y + lighthouse + contraste em todas URLs
+  3. Gere relatórios: HTML executivo + JSON técnico + Markdown técnico
+  4. Compare com auditoria anterior (diff_report)
+  5. Se regressão (novas violações critical/serious) → alerte no Telegram
+
+  Entregue resumo executivo em PT-BR no Telegram (chat 965862678).
+skills:
+  - "accessibility-audit-toolkit"
+deliver: "telegram:965862678"
+enabled_toolsets: ["web", "terminal", "file"]
+```
+
+## 2. Auditoria Semanal Profunda
+
+```yaml
+# cron/audit-weekly-deep.yaml
+name: "audit-weekly-deep"
+schedule: "0 2 * * 1"  # Segunda 02:00 UTC
+prompt: |
+  Auditoria profunda semanal — todos os sites JINC + Dataverso PcD + GitHub orgs.
+
+  Sites:
+  1. https://jornalistainclusivo.com
+  2. https://jornalistainclusivo.com.br
+  3. https://pcd.dataverso.org
+  4. https://dados.dataverso.org/pcd
+  5. https://pcd.chat
+  6. https://github.com/jornalistainclusivo (README, docs/)
+  7. https://github.com/RFerraz1984 (README, docs/)
+
+  Configuração:
+  - Crawl depth 5, até 50 URLs por site
+  - axe + pa11y + lighthouse + contraste + teclado + e-MAG em TODAS URLs
+  - screen reader test (speech-dispatcher) na home
+  - Relatórios completos + comparação com semana anterior
+  - Score compliance WCAG 2.2 AA + cobertura e-MAG 3.1
+  - Alert se compliance < 80% ou regressão > 5 violações critical
+
+  Entrega: relatório HTML + PDF (weasyprint) + JSON consolidado no Telegram.
+skills:
+  - "accessibility-audit-toolkit"
+deliver: "telegram:965862678"
+enabled_toolsets: ["web", "terminal", "file"]
+```
+
+## 3. Auditoria Quinzenal — Portais Legislativos
+
+```yaml
+# cron/audit-legislative.yaml
+name: "audit-legislative"
+schedule: "0 6 * * 2,4"  # Terça/Quinta 06:00 UTC
+prompt: |
+  Auditoria quinzenal de portais legislativos e governo federal.
+
+  Sites:
+  1. https://www.camara.leg.br
+  2. https://www.senado.leg.br
+  3. https://www.gov.br
+  4. https://www.planalto.gov.br
+  5. https://www.legisweb.com.br (busca proposições PcD)
+
+  Foco: acessibilidade de processos legislativos, tramitação de PLs PcD, transparência ativa.
+  Executa: axe + pa11y (WCAG2AA) + checklist e-MAG itens obrigatórios
+  Gera: relatório técnico + alerta se violação critical em:
+    - Conteúdo principal (leis, votações, decretos)
+    - Formulários de participação social
+    - Transmissões ao vivo (legendas, audiodescrição)
+
+  Entrega no Telegram + salva em /opt/data/audits/legislativo/
+skills:
+  - "accessibility-audit-toolkit"
+  - "legislative-tracker-br"
+deliver: "telegram:965862678"
+enabled_toolsets: ["web", "terminal", "file"]
+```
+
+## 4. Auditoria Pós-Deploy (Webhook)
+
+Não pode ser cron expression — usar `hermes cron create` com schedule cron e trigger manual via webhook, ou criar script wrapper que o CI/CD chama.
+
+```bash
+# Wrapper para CI/CD chamar via curl/webhook
+# /opt/data/scripts/audit-on-deploy.sh
+#!/usr/bin/env bash
+set -euo pipefail
+URL="${1:-}"
+if [[ -z "$URL" ]]; then
+    echo "Uso: $0 <URL>"
+    exit 1
+fi
+
+/opt/data/scripts/run-audit.sh --url "$URL" --auto-only --depth 2 --max-urls 5 --output "/opt/data/audits/deploy_$(date +%s)"
+
+# Verificar regressão crítica no log
+if grep -q "critical\|serious" "/opt/data/audits/deploy_$(date +%s)/reports/*_executive.md"; then
+    # Enviar alerta urgente via Telegram bot API
+    curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+        -d chat_id=965862678 \
+        -d text="🚨 **REGRESSÃO CRÍTICA PÓS-DEPLOY** — $URL" \
+        -d parse_mode=Markdown
+fi
+```
+
+## Como Instalar
+
+```bash
+# Opção 1: Via CLI hermes (um por um)
+/opt/hermes/bin/hermes cron create --name "audit-daily-jinc" \
+  --skill "accessibility-audit-toolkit" \
+  --deliver "telegram:965862678" \
+  "0 3 * * *" \
+  "$(cat cron/audit-daily-jinc.yaml | grep -A 100 'prompt:')"
+
+# Opção 2: Usar o wrapper script em cron job no_agent
+/opt/hermes/bin/hermes cron create --name "audit-daily-jinc-wrapper" \
+  --script "run-audit.sh" \
+  --no-agent \
+  --deliver "telegram:965862678" \
+  "0 3 * * *" \
+  "/opt/data/scripts/run-audit.sh --url-list /opt/data/urls_jinc.txt --auto-only --output /opt/data/audits/jinc_daily"
+```
