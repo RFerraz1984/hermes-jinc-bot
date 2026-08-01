@@ -35,6 +35,7 @@ load_env_file("/opt/data/.env")
 # Config
 MAX_EMAILS_PER_RUN = 100  # Limit LLM calls per run to avoid timeout
 MAX_PROCESSING_TIME = 240  # 4 minutes max
+MIN_CONFIDENCE_THRESHOLD = 0.5  # 50% - itens abaixo são descartados
 CONFIG_PATH = Path("/opt/data/journali/imap-config.json")
 DEDUPE_PATH = Path("/opt/data/journali/processed-message-ids.jsonl")
 OUTPUT_DIR = Path("/opt/data/journali")
@@ -218,6 +219,9 @@ def parse_llm_json(response: str, fallback: dict) -> dict:
         cleaned = cleaned[:-3]
     cleaned = cleaned.strip()
     
+    # Pré-limpeza: corrigir números malformados (ex: "confianca": 0. -> "confianca": 0.0)
+    cleaned = re.sub(r'"confianca"\s*:\s*(\d+)\.', r'"confianca": \1.0', cleaned)
+    
     # Estratégia 1: Tentar achar JSON completo entre {} balanceados
     def extract_json_objects(text):
         """Extrai todos os objetos JSON válidos do texto."""
@@ -261,6 +265,12 @@ def parse_llm_json(response: str, fallback: dict) -> dict:
     # Filtrar pelos que têm a estrutura esperada (categoria, confianca)
     for obj in json_objects:
         if isinstance(obj, dict) and 'categoria' in obj:
+            # Garantir que confianca é float válido
+            if 'confianca' in obj:
+                try:
+                    obj['confianca'] = float(obj['confianca'])
+                except (ValueError, TypeError):
+                    obj['confianca'] = 0.5
             return obj
     
     # Estratégia 2: Regex fallback para JSON simples
@@ -276,6 +286,39 @@ def parse_llm_json(response: str, fallback: dict) -> dict:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
+    
+    # Estratégia 4: Extrair campos-chave manualmente do texto
+    # Tenta achar categoria e confianca com regex
+    categoria_match = re.search(r'"categoria"\s*:\s*"([^"]+)"', cleaned)
+    confianca_match = re.search(r'"confianca"\s*:\s*([\d.]+)', cleaned)
+    if categoria_match:
+        result = {'categoria': categoria_match.group(1)}
+        if confianca_match:
+            try:
+                result['confianca'] = float(confianca_match.group(1))
+            except:
+                result['confianca'] = 0.5
+        else:
+            result['confianca'] = 0.5
+        # Tentar extrair palavras_chave_relevantes
+        keywords_match = re.search(r'"palavras_chave_relevantes"\s*:\s*(\[.*?\])', cleaned, re.DOTALL)
+        if keywords_match:
+            try:
+                result['palavras_chave_relevantes'] = json.loads(keywords_match.group(1))
+            except:
+                result['palavras_chave_relevantes'] = []
+        # Tentar extrair resumo
+        resumo_match = re.search(r'"resumo_uma_linha"\s*:\s*"([^"]*)"', cleaned)
+        if resumo_match:
+            result['resumo_uma_linha'] = resumo_match.group(1)
+        # Tentar extrair angulos
+        angulos_match = re.search(r'"angulos"\s*:\s*(\[.*?\])', cleaned, re.DOTALL)
+        if angulos_match:
+            try:
+                result['angulos'] = json.loads(angulos_match.group(1))
+            except:
+                result['angulos'] = []
+        return result
     
     print(f"⚠️ LLM response not valid JSON, using fallback. Response: {cleaned[:300]}", file=sys.stderr)
     return fallback
@@ -632,6 +675,14 @@ def main():
         keywords_found = classification.get("palavras_chave_relevantes", [])
         resumo_llm = classification.get("resumo_uma_linha", "")
         angulos = classification.get("angulos", [])
+        
+        # Threshold mínimo de confiança (50%)
+        if confianca < MIN_CONFIDENCE_THRESHOLD:
+            if message_id not in processed_ids:
+                save_message_id(message_id)
+                processed_ids.add(message_id)
+            print(f"⚠️ Item descartado por confiança baixa ({confianca:.0%}): {subject[:60]}...")
+            continue
         
         # Pular irrelevantes (mas salvar no dedupe)
         if categoria == "irrelevante":
